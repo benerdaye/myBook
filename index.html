@@ -93,12 +93,14 @@
             .footer-nav{
                 bottom:0;
                 height:70px;
-                opacity:.85;
+                opacity:.9;
             }
             .footer-nav>div{
                 width:33.33%;
                 text-align:center;
                 float: left;
+                background:none;
+                z-index:10000;
             }
             .icon-catalogue{
                 width:18px;
@@ -146,11 +148,93 @@
                 font-weight: 700;
                 color:#fff;
             }
+            .nav-pannel-bk,.nav-pannel{
+                position:fixed;
+                bottom:70px;
+                height:135px;
+                width:100%;
+            }
+            .nav-pannel-bk{
+                background:#000;
+                opacity:0.9;
+                z-index:10001;
+            }
+            .nav-pannel{
+                background:none;
+                color:#fff;
+                z-index:10001;
+            }
+            .child-mod{
+                padding:5px 10px;
+                margin:15px;
+            }
+            .child-mod span{
+                display:inline-block;
+                padding-right:20px;
+                padding-left:10px;
+            }
+            .font-size-button{
+                background:none;
+                border:1px solid #8c8c8c;
+                color:#fff;
+                border-radius:16px;
+                padding:5px 40px ;
+            }
+            .child-mod button:nth-child(2){
+                margin-right:10px;
+            }
+            .bk-container{
+                position:relative;
+                width:30px;
+                height:30px;
+                border-radius:50%;
+                background:#F7EEE5;
+                display:inline-block;
+                vertical-align:middle;
+                margin-right:8px;
+            }
+            .bk-container-current{
+                position:absolute;
+                width:32px;
+                height:32px;
+                border-radius:50%;
+                border:1px #ff7800 solid;
+                display:block;
+                top:-2px;
+                left:-2px;
+            }
+            .bk-container:nth-child(3){
+                background:#E9DFC7;
+            }
+            .bk-container:nth-child(4){
+                background:#A4A4A4;
+            }
+            .bk-container:nth-child(5){
+                background:#CDEFCE;
+            }
+            .bk-container:nth-child(6){
+                background:#283548;
+            }
+            .bk-container:nth-child(7){
+                background:#0F1410;
+            }
+            .artical-action-mid{
+                position:fixed;
+                top:30%;
+                z-index:10002;
+                width:100%;
+                height:40%;
+            }
         </style>
     </head>
     <body>
         <div id="root" class="container">
-            <div id="top-nav" class="top-nav">
+            
+            <div class="m-artical-action">
+                <div class="artical-action-mid" id="action_mid"></div>
+            </div>
+            
+            <div id="top-nav" class="top-nav" style="display:none">
                 <div class="icon-back"></div>
                 <div class="nav-title">返回书架</div>
             </div>
@@ -176,7 +260,7 @@
                 </ul>
             </div>
             <div></div>
-            <div id="footer-nav" class="footer-nav">
+            <div id="footer-nav" class="footer-nav" style="display:none">
                 <div class="foot-left">
                     <div class="icon-catalogue"></div>
                     <div class="catalogue">目录</div>
@@ -197,14 +281,30 @@
                     </div>
                 </div>
             </div>
-            <div class="nav-pannel" id="font-container">
+            <div class="nav-pannel-bk" style="display:none"></div>
+            <div class="nav-pannel" id="font-container" style="display:none">
                 <div class="child-mod">
                     <span>字号</span>
-                    <button id="large-font" class="font-size-button">放大</button>
-                    <button id="smail-font" class="font-size-button">缩小</button>
+                    <button id="large-font" class="font-size-button">大</button>
+                    <button id="smail-font" class="font-size-button">小</button>
                 </div>
                 <div class="child-mod">
                     <span>背景</span>
+                    <div class="bk-container">
+                        <div class="bk-container-current"></div>
+                    </div>
+                    <div class="bk-container">
+                        <div class="bk-container-current"></div>
+                    </div>
+                    <div class="bk-container">
+                        <div class="bk-container-current"></div>
+                    </div>
+                    <div class="bk-container">
+                        <div class="bk-container-current"></div>
+                    </div>
+                    <div class="bk-container">
+                        <div class="bk-container-current"></div>
+                    </div>
                     <div class="bk-container">
                         <div class="bk-container-current"></div>
                     </div>
@@ -219,7 +319,63 @@
         <script src="js/jquery.jsonp.js"></script>
 
         <script>
-            
+            (function(){
+                var Util=(function(){
+                    var prefix = 'heml5_reader_';
+                    var StorageGetter = function(key){
+                        return localStorage.getItem(prefix + key);
+                    }
+                    var StorageSetter = function(key,val){
+                       return localStorage.getItem(prefix + key,val); 
+                    }
+                    return{
+                        StorageGetter:StorageGetter,
+                        StorageSetter:StorageSetter
+                    }
+                })();
+                var Dom = {
+                    top_nav:$('#top-nav'),
+                    bottom_nav:$('#footer-nav')
+                };
+                var Win = $(window);
+                var Doc = $(document);
+                
+                function main(){
+                    //todo 整个函数的入口函数
+                    EventHanlder();
+                }
+                function ReaderModel(){
+                    //todo 实现和阅读器相关的数据交互的方法
+                }
+                function readerBaseFrame(){
+                    //todo 渲染基本的UI
+                }
+                function EventHanlder(){
+                    //todo 交互的事件绑定
+                    //点击中间区域，上下边栏显示，滚动时隐藏
+                    $('#action_mid').click(function(){
+                        if(Dom.top_nav.css('display') == 'none'){
+                            Dom.bottom_nav.show();
+                            Dom.top_nav.show();
+                        }else{
+                            Dom.bottom_nav.hide();
+                            Dom.top_nav.hide();
+                        }
+                    });
+                    Win.scroll(function(){
+                        Dom.bottom_nav.hide();
+                        Dom.top_nav.hide();
+                    })
+                }
+                main();
+
+                
+                
+                
+                
+                
+                
+            })();
         </script>
     </body>
 </html>
