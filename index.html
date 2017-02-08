@@ -311,13 +311,14 @@
 
         <script>
             (function(){
-                var Util=(function(){
+                'use strict';
+                var Util = (function(){
                     var prefix = 'heml5_reader_';
                     var StorageGetter = function(key){
                         return localStorage.getItem(prefix + key);
                     }
                     var StorageSetter = function(key,val){
-                       return localStorage.getItem(prefix + key,val); 
+                       return localStorage.setItem(prefix + key,val); 
                     }
                     var getBSONP = function(url,callback){
                         return $.jsonp({
@@ -328,6 +329,7 @@
                                 var data = $.base64.decode(result);
                                 var json = decodeURIComponent(escape(data));
                                 callback(json);
+                                
                             }
                         })
                     }
@@ -348,7 +350,10 @@
                 };
                 var Win = $(window);
                 var Doc = $(document);
+                var readerModel;
+                var readerUI;
                 var RootContainer = $('#fition_container');
+                var Rootbk=$('#root');
                 var initFontSize = Util.StorageGetter('font-size');
                 initFontSize = parseInt(initFontSize);
                 if(!initFontSize){
@@ -360,32 +365,60 @@
                 if(!initbkColor){
                     initbkColor = '#E9DFC7';
                 }
-                RootContainer.css('background',initbkColor);
+                Rootbk.css('background',initbkColor);
                 
                 function main(){
                     //todo 整个函数的入口函数
-                    var readerModer = ReaderModel();
-                    var readerUI=readerBaseFrame(RootContainer);
-                    readerModer.init(function(data){
-                        readerUI();
+                    readerModel = ReaderModel();
+                    readerUI=readerBaseFrame(RootContainer);
+                    readerModel.init(function(data){
+                        readerUI(data);
                     });
                     EventHanlder();
                 }
                 function ReaderModel(){
                     //todo 实现和阅读器相关的数据交互的方法
                     var Chapter_id;
+                    var ChapterTotal;
                     var init = function(UIcallback){
-                        getFictionInfo(function(){
-                            getCurChapterContent(Chapter_id,function(data){
+                        
+                        // getFictionInfo(function(){
+                        //     getCurChapterContent(Chapter_id,function(data){
+                        //         UIcallback && UIcallback(data);
+                        //     });
+                        // });
+                        getFictionInfoPromise().then(function(d){
+                             return getCurChapterContentPromise();
+                        }).then(function(data){
                                 UIcallback && UIcallback(data);
-                            });
                         });
                     }
                     var getFictionInfo = function(callback){
                         $.get('data/chapter.json',function(data){
-                            Chapter_id = data.chapters[1].chapter_id;
+                            Chapter_id = Util.StorageGetter('last_chapter_id');
+                            if(Chapter_id == null){
+                                Chapter_id = data.chapters[1].chapter_id;
+                            }
+                            ChapterTotal = data.chapters.length;
                             callback && callback();
                         },'json');
+                    }
+                    
+                    var getFictionInfoPromise = function(){
+                        return new Promise(function(resolve,reject){
+                            $.get('data/chapter.json',function(data){
+                                if(data.result == 0){
+                                    Chapter_id = Util.StorageGetter('last_chapter_id');
+                                    if(Chapter_id == null){
+                                        Chapter_id = data.chapters[1].chapter_id;
+                                    }
+                                    ChapterTotal = data.chapters.length;
+                                    resolve();
+                                }else{
+                                    reject();
+                                }
+                            },'json');    
+                        });
                     }
                     var getCurChapterContent = function(chapter_id,callback){
                         $.get('data/data' + chapter_id + '.json', function(data){
@@ -396,18 +429,58 @@
                                 });
                             }
                         },'json')
+                    };
+                    
+                    var getCurChapterContentPromise = function(){
+                        return new Promise(function(resolve,reject){
+                            $.get('data/data' + Chapter_id + '.json', function(data){
+                                if(data.result == 0){
+                                    var url = data.jsonp;
+                                    Util.getBSONP(url,function(data){
+                                        resolve(data);
+                                    });
+                                }else{
+                                    reject({msg:'fail'});
+                                }
+                            },'json')
+                        });
                     }
+                    
+                    
+                    
+                    
+                    
+                    var prevChapter = function(UIcallback){
+                        Chapter_id = parseInt(Chapter_id,10);
+                        if(Chapter_id === 0){
+                            return;
+                        }
+                        Chapter_id = Chapter_id - 1;
+                        getCurChapterContent(Chapter_id,UIcallback);
+                        Util.StorageSetter('last_chapter_id',Chapter_id);
+                    };
+                    var nextChapter = function(UIcallback){
+                        Chapter_id = parseInt(Chapter_id,10);
+                        if(Chapter_id == ChapterTotal){
+                            return;
+                        }
+                        Chapter_id = Chapter_id + 1;
+                        getCurChapterContent(Chapter_id,UIcallback);
+                        Util.StorageSetter('last_chapter_id',Chapter_id);
+                    };
                     return {
-                        init:init
+                        init:init,
+                        prevChapter:prevChapter,
+                        nextChapter:nextChapter
                     }
                 }
                 function readerBaseFrame(container){
                     //todo 渲染基本的UI
                     function parseChapterData(jsonData){
                         var jsonObj = JSON.parse(jsonData);
-                        var html = '<h4>' +jsonObj.t + '</h4>';
-                        for(var i = 0; i<jsonObj.p.length;i++){
-                            html += '<p>' +jsonObj.p[i] + '</p>';
+                        var html = '<h4>' + jsonObj.t + '</h4>';
+                        for(var i = 0; i < jsonObj.p.length;i++){
+                            html += '<p>' + jsonObj.p[i] + '</p>';
                         }
                         return html
                     }
@@ -415,6 +488,13 @@
                         container.html(parseChapterData(data));
                     }
                 }
+                
+                
+                
+                
+                
+                
+                
                 function EventHanlder(){
                     //todo 交互的事件绑定
                     //点击中间区域，上下边栏显示，滚动时隐藏
@@ -444,18 +524,21 @@
                         $(this).css('display','none');
                         Dom.daytime.css('display','block');
                         initbkColor = '#0F1410';
-                        RootContainer.css('background',initbkColor);
+                        Rootbk.css('background',initbkColor);
+                        Util.StorageSetter('background',initbkColor);
                         
                     });
                    Dom.daytime.click(function(){
                         $(this).css('display','none');
                         Dom.night.css('display','block');
                         initbkColor = '#E9DFC7';
-                        RootContainer.css('background',initbkColor);
+                        Rootbk.css('background',initbkColor);
+                        Util.StorageSetter('background',initbkColor);
                     });
                     $('.bk-container').click(function(){
                         initbkColor = $(this).css('background');
-                        RootContainer.css('background',initbkColor);
+                        Rootbk.css('background',initbkColor);
+                        Util.StorageSetter('background',initbkColor);
                     })
                     //改变字体大小
                     $('#large-font').click(function(){
@@ -465,6 +548,7 @@
                         initFontSize += 1;
                         RootContainer.css('font-size',initFontSize);
                         Util.StorageSetter('font-size',initFontSize);
+                        debugger
                         
                     });
                     $('#small-font').click(function(){
@@ -481,7 +565,18 @@
                         Dom.top_nav.hide();
                         Dom.font_container.hide();
                         Dom.icon_font.removeClass('icon-fonts');
-                    })
+                    });
+                    $('#prev_button').click(function(){
+                        readerModel.prevChapter(function(data){
+                            readerUI(data);
+                        });
+                        
+                    });
+                    $('#next_button').click(function(){
+                        readerModel.nextChapter(function(data){
+                            readerUI(data);
+                        });
+                    });
                 }
                 main();
 
