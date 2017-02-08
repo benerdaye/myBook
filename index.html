@@ -142,6 +142,9 @@
                 -webkit-background-size: contain;
                 background-size: contain;
             }
+            .daytime{
+                display:none;
+            }
             .trigger,.font,.catalogue{
                 margin-top: 5px;
                 font-size: 12px;
@@ -240,17 +243,6 @@
             </div>
             <div id="fition_chapter_title"></div>
             <div id="fition_container" class="m-read-content">
-                <h4>关于慕课网</h4>
-                <p>从课程的质量，和整体的用户体验来看，说她准备打造成中国IT的黄埔其实也不无可能。
-我在慕课得到很多，至今能为她付出的，也就是尽力为之宣传（她确实好！）除此以外，真不知道还能如何回报。（社区帮助解答？多提意见反馈？参加慕课活动？etc。。。etc）
-如果未来某天，慕课推出收费模式，我想我会买单！因为我很希望她继续生存，发展下去。为咱中国it的未来培养更多更多的人才！咱中国能造坦克造航母造飞船，甚至现在的军火能出口，高铁能出口，巴拉巴拉巴拉巴拉无不意味着中国在井喷。所以咱中国的IT也要井喷！
-在这个角度，我希望慕课越做越好，越做越大！
-关于她的盈利模式，我想，现在的IT招聘网那么多，未来如果植入it招聘广告我想也会很合理，大家来慕课学也很多都是为了更好的就业，如果慕课和这些平台或者it企业直接对接，那么。。。。一个完美的生态圈似乎初见雏形。
-但我总隐约觉得，慕课有更远大的愿景！</p>
-                <p>关于她的盈利模式，我想，现在的IT招聘网那么多，未来如果植入it招聘广告我想也会很合理，大家来慕课学也很多都是为了更好的就业，如果慕课和这些平台或者it企业直接对接，那么。。。。一个完美的生态圈似乎初见雏形。
-但我总隐约觉得，慕课有更远大的愿景</p>
-                <p>关于她的盈利模式，我想，现在的IT招聘网那么多，未来如果植入it招聘广告我想也会很合理，大家来慕课学也很多都是为了更好的就业，如果慕课和这些平台或者it企业直接对接，那么。。。。一个完美的生态圈似乎初见雏形。
-但我总隐约觉得，慕课有更远大的愿景</p>
             </div>
                 
             <div class="m-button-bar">
@@ -266,27 +258,26 @@
                     <div class="catalogue">目录</div>
                 </div>
                 <div class="foot-content">
-                    <div class="icon-fonts"></div>
-
+                    <div class="icon-font"></div>
                     <div class="font">字体</div>
                 </div>
                 <div class="foot-right">
-<!--                     <div class="night">
+                     <div class="night">
                         <div class="icon-trigger"></div>
                         <div class="trigger">夜间</div>
-                    </div> -->
+                    </div>
                     <div class="daytime">
                         <div class="icon-daytime"></div>
                         <div class="trigger">白天</div>    
                     </div>
                 </div>
             </div>
-            <div class="nav-pannel-bk" style="display:none"></div>
-            <div class="nav-pannel" id="font-container" style="display:none">
+            <div class="nav-pannel-bk font-container" style="display:none"></div>
+            <div class="nav-pannel font-container" style="display:none">
                 <div class="child-mod">
                     <span>字号</span>
                     <button id="large-font" class="font-size-button">大</button>
-                    <button id="smail-font" class="font-size-button">小</button>
+                    <button id="small-font" class="font-size-button">小</button>
                 </div>
                 <div class="child-mod">
                     <span>背景</span>
@@ -328,27 +319,101 @@
                     var StorageSetter = function(key,val){
                        return localStorage.getItem(prefix + key,val); 
                     }
+                    var getBSONP = function(url,callback){
+                        return $.jsonp({
+                            url:url,
+                            cache:true,
+                            callback:'duokan_fiction_chapter',
+                            success:function(result){
+                                var data = $.base64.decode(result);
+                                var json = decodeURIComponent(escape(data));
+                                callback(json);
+                            }
+                        })
+                    }
                     return{
+                        getBSONP:getBSONP,
                         StorageGetter:StorageGetter,
                         StorageSetter:StorageSetter
                     }
                 })();
                 var Dom = {
                     top_nav:$('#top-nav'),
-                    bottom_nav:$('#footer-nav')
+                    bottom_nav:$('#footer-nav'),
+                    font_container:$('.font-container'),
+                    icon_font:$('.icon-font'),
+                    night:$('.night'),
+                    daytime:$('.daytime')
+                    
                 };
                 var Win = $(window);
                 var Doc = $(document);
+                var RootContainer = $('#fition_container');
+                var initFontSize = Util.StorageGetter('font-size');
+                initFontSize = parseInt(initFontSize);
+                if(!initFontSize){
+                    initFontSize = 14;
+                }
+                RootContainer.css('font-size',initFontSize);
+                
+                var initbkColor = Util.StorageGetter('background');
+                if(!initbkColor){
+                    initbkColor = '#E9DFC7';
+                }
+                RootContainer.css('background',initbkColor);
                 
                 function main(){
                     //todo 整个函数的入口函数
+                    var readerModer = ReaderModel();
+                    var readerUI=readerBaseFrame(RootContainer);
+                    readerModer.init(function(data){
+                        readerUI();
+                    });
                     EventHanlder();
                 }
                 function ReaderModel(){
                     //todo 实现和阅读器相关的数据交互的方法
+                    var Chapter_id;
+                    var init = function(UIcallback){
+                        getFictionInfo(function(){
+                            getCurChapterContent(Chapter_id,function(data){
+                                UIcallback && UIcallback(data);
+                            });
+                        });
+                    }
+                    var getFictionInfo = function(callback){
+                        $.get('data/chapter.json',function(data){
+                            Chapter_id = data.chapters[1].chapter_id;
+                            callback && callback();
+                        },'json');
+                    }
+                    var getCurChapterContent = function(chapter_id,callback){
+                        $.get('data/data' + chapter_id + '.json', function(data){
+                            if(data.result == 0){
+                                var url = data.jsonp;
+                                Util.getBSONP(url,function(data){
+                                    callback && callback(data);
+                                });
+                            }
+                        },'json')
+                    }
+                    return {
+                        init:init
+                    }
                 }
-                function readerBaseFrame(){
+                function readerBaseFrame(container){
                     //todo 渲染基本的UI
+                    function parseChapterData(jsonData){
+                        var jsonObj = JSON.parse(jsonData);
+                        var html = '<h4>' +jsonObj.t + '</h4>';
+                        for(var i = 0; i<jsonObj.p.length;i++){
+                            html += '<p>' +jsonObj.p[i] + '</p>';
+                        }
+                        return html
+                    }
+                    return function(data){
+                        container.html(parseChapterData(data));
+                    }
                 }
                 function EventHanlder(){
                     //todo 交互的事件绑定
@@ -360,11 +425,62 @@
                         }else{
                             Dom.bottom_nav.hide();
                             Dom.top_nav.hide();
+                            Dom.font_container.hide();
+                            Dom.icon_font.removeClass('icon-fonts');
                         }
                     });
+                    $('.foot-content').click(function(){
+                        if(Dom.font_container.css('display') == 'none'){
+                            Dom.font_container.show();
+                            Dom.icon_font.addClass('icon-fonts');
+                        }else{
+                            Dom.font_container.hide();
+                            Dom.icon_font.removeClass('icon-fonts');
+                        }
+                    });
+                    //改变背景颜色
+                    Dom.night.click(function(){
+                        //todo 
+                        $(this).css('display','none');
+                        Dom.daytime.css('display','block');
+                        initbkColor = '#0F1410';
+                        RootContainer.css('background',initbkColor);
+                        
+                    });
+                   Dom.daytime.click(function(){
+                        $(this).css('display','none');
+                        Dom.night.css('display','block');
+                        initbkColor = '#E9DFC7';
+                        RootContainer.css('background',initbkColor);
+                    });
+                    $('.bk-container').click(function(){
+                        initbkColor = $(this).css('background');
+                        RootContainer.css('background',initbkColor);
+                    })
+                    //改变字体大小
+                    $('#large-font').click(function(){
+                        if(initFontSize > 20){
+                            return;
+                        }
+                        initFontSize += 1;
+                        RootContainer.css('font-size',initFontSize);
+                        Util.StorageSetter('font-size',initFontSize);
+                        
+                    });
+                    $('#small-font').click(function(){
+                        if(initFontSize < 12){
+                            return;
+                        }
+                        initFontSize -= 1;
+                        RootContainer.css('font-size',initFontSize);
+                        Util.StorageSetter('font-size',initFontSize);
+                    });
+                    //滚动时边栏消失
                     Win.scroll(function(){
                         Dom.bottom_nav.hide();
                         Dom.top_nav.hide();
+                        Dom.font_container.hide();
+                        Dom.icon_font.removeClass('icon-fonts');
                     })
                 }
                 main();
